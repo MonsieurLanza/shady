@@ -1,10 +1,12 @@
 #[macro_use]
 extern crate glium;
+extern crate image;
 extern crate notify;
 extern crate time;
 
 mod shaders;
 
+use glium::texture::SrgbTexture2d;
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use std::fs::File;
 use std::io::prelude::*;
@@ -16,6 +18,8 @@ use glium::backend::Facade;
 use glium::glutin::event::{ElementState, Event, MouseButton, VirtualKeyCode};
 use glium::Surface;
 
+use image::{ io::Reader, ImageBuffer, ImageError, Rgba };
+
 fn load_shader(filename: &Path) -> String {
     let mut f = File::open(filename).unwrap();
     let mut shader = String::new();
@@ -23,6 +27,20 @@ fn load_shader(filename: &Path) -> String {
 
     shader
 }
+
+fn load_texture(filename: &Path) -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, ImageError>  {
+    let image = Reader::open(filename)?.decode()?.to_rgba();
+    Ok(image)
+}
+
+// fn load_channel(filename: &Path, display: &dyn Facade) ->  Result<SrgbTexture2d, ImageError> {
+    // let image = load_texture(filename)?;
+    // let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image.dimensions());
+
+    // let texture = SrgbTexture2d::new(&display, image)?; 
+
+    // Ok(texture)
+// }
 
 fn compile_shaders(
     display: &dyn Facade,
@@ -101,7 +119,7 @@ fn main() {
 
     let vertex1 = Vertex {
         position: [-1.0, 1.0],
-    }; // NW
+    }; // NWgg
     let vertex2 = Vertex {
         position: [-1.0, -1.0],
     }; // SW
@@ -136,8 +154,7 @@ fn main() {
 
     let mut frame: i32 = 0;
     let start_time: f64 = (time::OffsetDateTime::now_utc() - time::OffsetDateTime::unix_epoch())
-        .as_seconds_f64()
-        * 1000.0;
+        .as_seconds_f64();
     let mut last_time: f64 = start_time;
 
     // mouse pixel coords. xy: current (if MLB down), zw: click
@@ -201,11 +218,9 @@ fn main() {
             Event::RedrawRequested(_) => {
                 let current_time: f64 = (time::OffsetDateTime::now_utc()
                     - time::OffsetDateTime::unix_epoch())
-                .as_seconds_f64()
-                    * 1000.0;
+                .as_seconds_f64();
                 let elapsed_time = (current_time - start_time) as f32;
                 let delta_time = (current_time - last_time) as f32;
-                last_time = current_time;
 
                 let mut target = display.draw();
                 let (width, height) = target.get_dimensions();
@@ -216,6 +231,7 @@ fn main() {
                     iResolution: [width, height], // uvec2
                     iGlobalTime: elapsed_time, // float
                     iTimeDelta: delta_time, // float
+                    iTime: elapsed_time, // float
                 };
 
                 last_time = current_time;
